@@ -8,6 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+.env
+.env.*
 
-# temporary files
+# Temporary and log files
 /tmp
+*.log
+.pytest_cache/
+.DS_Store
