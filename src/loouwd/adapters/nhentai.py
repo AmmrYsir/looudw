@@ -38,20 +38,29 @@ API_V2_BASE = "https://nhentai.net/api/v2"
 IMAGE_CDN_BASE = "https://i.nhentai.net"
 THUMB_CDN_BASE = "https://t.nhentai.net"
 
-TAG_OPTIONS = [
-    "tentacles", "stuck in wall", "netorare", "netorase", "double penetration",
-    "mmf threesome", "deepthroat", "bukkake", "big penis", "dark skin",
-    "goblin", "blowjob", "crotch tattoo", "old man", "mind break", "handjob",
-    "fingering", "condom", "blindfold", "blackmail", "group", "rape", "slave",
-    "bestiality", "anal", "defloration", "impregnation", "dilf", "cheating",
-    "muscle", "big breasts", "schoolgirl uniform", "sole female", "full color",
-    "ahegao", "paizuri", "nakadashi", "uncensored"
+# API-Native Filters based on official nhentai v2 specification
+SORT_OPTIONS = [
+    SourceFilterOption(value="recent", label="Recent / Newest"),
+    SourceFilterOption(value="popular", label="Popular (All Time)"),
+    SourceFilterOption(value="popular-today", label="Popular Today"),
+    SourceFilterOption(value="popular-week", label="Popular This Week"),
+    SourceFilterOption(value="popular-month", label="Popular This Month"),
 ]
 
-PARODY_OPTIONS = [
-    "Blue Archive", "Genshin Impact", "Pokemon", "Love Live", "Sword Art Online",
-    "To Love-Ru", "My Hero Academia", "Princess Connect", "Code Geass",
-    "Dead or Alive", "Kimetsu no Yaiba", "Honkai Star Rail", "Jujutsu Kaisen"
+LANGUAGE_OPTIONS = [
+    SourceFilterOption(value="", label="All Languages"),
+    SourceFilterOption(value="english", label="English"),
+    SourceFilterOption(value="japanese", label="Japanese"),
+    SourceFilterOption(value="chinese", label="Chinese"),
+]
+
+CATEGORY_OPTIONS = [
+    SourceFilterOption(value="", label="All Categories"),
+    SourceFilterOption(value="doujinshi", label="Doujinshi"),
+    SourceFilterOption(value="manga", label="Manga"),
+    SourceFilterOption(value="artist-cg", label="Artist CG"),
+    SourceFilterOption(value="game-cg", label="Game CG"),
+    SourceFilterOption(value="non-h", label="Non-H"),
 ]
 
 
@@ -59,7 +68,8 @@ PARODY_OPTIONS = [
 class NHentaiAdapter(BaseSourceAdapter):
     """
     Production-grade nhentai source adapter built against official v2 REST API specs.
-    Handles Cloudflare bypass via TLS fingerprint impersonation and dynamic image extensions.
+    Features dynamic API-native filters, freeform tag search, exact image extension mapping,
+    and Cloudflare TLS fingerprint impersonation.
     """
 
     @property
@@ -67,31 +77,51 @@ class NHentaiAdapter(BaseSourceAdapter):
         return SourceManifest(
             id=SOURCE_ID,
             name=SOURCE_NAME,
-            version="2.0.0",
-            description="Official nhentai v2 REST API engine with dynamic webp/png/jpg extensions and TLS bypass.",
+            version="2.1.0",
+            description="Official nhentai v2 REST API engine with dynamic API-native sorting and filters.",
+            author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
             supported_media_types=["manga"],
             auth=SourceAuthConfig(type="none"),
             features=SourceFeatureSet(
-                browse=True, search=True, title_details=True, favorites=True
+                browse=True, search=True, title_details=True, favorites=True, tag_autocomplete=True
             ),
             browse_config=SourceBrowseConfig(
                 supports_pagination=True,
                 filters=[
                     SourceFilterDefinition(
+                        key="sort",
+                        label="Sort By",
+                        type="select",
+                        default_value="recent",
+                        options=SORT_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
+                        key="language",
+                        label="Language",
+                        type="select",
+                        default_value="",
+                        options=LANGUAGE_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
+                        key="category",
+                        label="Category",
+                        type="select",
+                        default_value="",
+                        options=CATEGORY_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
                         key="tag",
-                        label="Tag",
-                        type="multiselect",
-                        default_value=[],
-                        options=[SourceFilterOption(value=t, label=t) for t in TAG_OPTIONS],
+                        label="Tag Query (e.g. 'full color', 'sole female')",
+                        type="text",
+                        default_value="",
                     ),
                     SourceFilterDefinition(
                         key="parody",
-                        label="Parody",
-                        type="multiselect",
-                        default_value=[],
-                        options=[SourceFilterOption(value=p, label=p) for p in PARODY_OPTIONS],
+                        label="Parody Query (e.g. 'genshin impact')",
+                        type="text",
+                        default_value="",
                     ),
                 ],
             ),
@@ -125,28 +155,36 @@ class NHentaiAdapter(BaseSourceAdapter):
     ) -> SourceBrowseResult:
         page = max(1, request.page)
         query = request.query.strip() if request.query else ""
+        sort = request.filters.get("sort", "recent")
+        language = request.filters.get("language", "")
+        category = request.filters.get("category", "")
+        tag = request.filters.get("tag", "")
+        parody = request.filters.get("parody", "")
 
+        # Build nhentai v2 query string
         query_parts = []
         if query:
             query_parts.append(query)
-
-        tags = request.filters.get("tag", [])
-        if isinstance(tags, str):
-            tags = [tags]
-        for t in tags:
-            query_parts.append(f'tag:"{t}"')
-
-        parodies = request.filters.get("parody", [])
-        if isinstance(parodies, str):
-            parodies = [parodies]
-        for p in parodies:
-            query_parts.append(f'parody:"{p}"')
+        if language:
+            query_parts.append(f'language:"{language}"')
+        if category:
+            query_parts.append(f'category:"{category}"')
+        if tag:
+            query_parts.append(f'tag:"{tag}"')
+        if parody:
+            query_parts.append(f'parody:"{parody}"')
 
         full_query = " ".join(query_parts)
+
+        # Construct API v2 URL
         if full_query:
             url = f"{API_V2_BASE}/galleries?query={quote(full_query)}&page={page}"
+            if sort and sort != "recent":
+                url += f"&sort={quote(str(sort))}"
         else:
             url = f"{API_V2_BASE}/galleries?page={page}"
+            if sort:
+                url += f"&sort={quote(str(sort))}"
 
         data = await self._fetch_api_json(context, url)
         if not data or not isinstance(data, dict):
@@ -169,7 +207,6 @@ class NHentaiAdapter(BaseSourceAdapter):
                 or f"Gallery {gid}"
             )
 
-            # Build exact thumbnail URL from API cover/thumb path
             thumb_obj = g.get("thumbnail") or g.get("cover")
             thumb_url = None
             if isinstance(thumb_obj, dict) and thumb_obj.get("path"):
@@ -293,3 +330,36 @@ class NHentaiAdapter(BaseSourceAdapter):
             title=title,
             pages=pages,
         )
+
+    @cached(ttl=600, key_prefix="nhentai:v2:autocomplete")
+    async def autocomplete_tags(
+        self, query: str, tag_type: str = "tag", context: SourceExecutionContext | None = None
+    ) -> list[Any]:
+        from loouwd.core.schemas import SourceTagSuggestion
+        from loouwd.core.context import default_context
+
+        ctx = context or default_context
+        clean_type = tag_type.lower().strip() if tag_type else "tag"
+        if clean_type not in ["artist", "category", "character", "group", "language", "parody", "tag"]:
+            clean_type = "tag"
+
+        url = f"{API_V2_BASE}/tags/{clean_type}?query={quote(query.strip())}"
+        data = await self._fetch_api_json(ctx, url)
+
+        if not data or not isinstance(data, dict):
+            return []
+
+        results = data.get("result", [])
+        suggestions = []
+        for item in results:
+            if isinstance(item, dict) and item.get("name"):
+                suggestions.append(
+                    SourceTagSuggestion(
+                        name=item.get("name"),
+                        type=item.get("type", clean_type),
+                        count=item.get("count"),
+                        description=item.get("description"),
+                    )
+                )
+
+        return suggestions

@@ -117,6 +117,25 @@ async def get_playback(
     return await adapter.get_playback(source_title_id, content_id, default_context)
 
 
+from loouwd.core.schemas import SourceTagSuggestion
+
+
+@router.get("/sources/{source_id}/tags/autocomplete", response_model=list[SourceTagSuggestion])
+async def autocomplete_tags(
+    source_id: str,
+    query: str = Query(..., min_length=1),
+    tag_type: str = Query(default="tag", alias="type"),
+):
+    """Real-time tag autocompletion endpoint for UI search bars."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return await adapter.autocomplete_tags(query, tag_type=tag_type, context=default_context)
+
+
 from loouwd.services.unified import (
     unified_service,
     UnifiedBrowseRequest,

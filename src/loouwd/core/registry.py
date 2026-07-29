@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import time
-from typing import Type
+from typing import Type, Any
 from loouwd.core.schemas import (
     SourceManifest,
     SourceBrowseRequest,
@@ -46,6 +46,11 @@ class BaseSourceAdapter(ABC):
         self, source_title_id: str, content_id: str | None, context: SourceExecutionContext
     ) -> SourcePlayback:
         raise NotImplementedError(f"get_playback not implemented for {self.manifest.id}")
+
+    async def autocomplete_tags(
+        self, query: str, tag_type: str = "tag", context: SourceExecutionContext | None = None
+    ) -> list[Any]:
+        return []
 
     async def health_check(self, context: SourceExecutionContext) -> SourceHealthCheck:
         start_time = time.time()

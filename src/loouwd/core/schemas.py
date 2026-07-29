@@ -41,11 +41,19 @@ class SourceAuthConfig(BaseSchema):
     fields: list[str] = Field(default_factory=list)
 
 
+class SourceTagSuggestion(BaseSchema):
+    name: str
+    type: str = "tag"
+    count: int | None = None
+    description: str | None = None
+
+
 class SourceFeatureSet(BaseSchema):
     browse: bool = True
     search: bool = True
     title_details: bool = Field(default=True, alias="titleDetails")
     favorites: bool = True
+    tag_autocomplete: bool = Field(default=False, alias="tagAutocomplete")
     library_sync: bool = Field(default=False, alias="librarySync")
     history_sync: bool = Field(default=False, alias="historySync")
     updates_sync: bool = Field(default=False, alias="updatesSync")
