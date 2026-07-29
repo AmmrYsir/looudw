@@ -1,5 +1,9 @@
 # 🚀 Loouwd: Production-Grade Unified Source Registry & Reactive Streaming Core
 
+[![Loouwd CI](https://github.com/loouwd/loouwd/actions/workflows/ci.yml/badge.svg)](https://github.com/loouwd/loouwd/actions/workflows/ci.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
+![License MIT](https://img.shields.io/badge/license-MIT-green.svg)
+
 **Loouwd** is a high-performance, asynchronous media source registry and streaming backend built with **Python 3.12**, **FastAPI**, and **curl_cffi**. It aggregates manga, doujinshi, webtoons, and video streams across 7 production-grade source adapters into a single unified API with sub-100ms first-byte reactive streaming, per-host rate limiting, dynamic tag autocomplete, and high-speed in-memory caching (0.02ms - 0.04ms response times).
 
 ---
