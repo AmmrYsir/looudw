@@ -4,6 +4,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from loouwd.core.config import settings
 from loouwd.core.logging import logger
+from loouwd.core.limiter import domain_limiter
 
 
 class SourceExecutionContext:
@@ -55,12 +56,16 @@ class SourceExecutionContext:
         headers: dict[str, str] | None = None,
         params: dict[str, str | int] | None = None,
     ) -> str:
-        req_headers = dict(self._client.headers)
-        if headers:
-            req_headers.update(headers)
-        response = await self._client.get(url, headers=req_headers, params=params)
-        response.raise_for_status()
-        return response.text
+        await domain_limiter.acquire(url)
+        try:
+            req_headers = dict(self._client.headers)
+            if headers:
+                req_headers.update(headers)
+            response = await self._client.get(url, headers=req_headers, params=params)
+            response.raise_for_status()
+            return response.text
+        finally:
+            domain_limiter.release(url)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -74,12 +79,16 @@ class SourceExecutionContext:
         headers: dict[str, str] | None = None,
         params: dict[str, str | int] | None = None,
     ) -> dict | list:
-        req_headers = dict(self._client.headers)
-        if headers:
-            req_headers.update(headers)
-        response = await self._client.get(url, headers=req_headers, params=params)
-        response.raise_for_status()
-        return response.json()
+        await domain_limiter.acquire(url)
+        try:
+            req_headers = dict(self._client.headers)
+            if headers:
+                req_headers.update(headers)
+            response = await self._client.get(url, headers=req_headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        finally:
+            domain_limiter.release(url)
 
     async def aclose(self) -> None:
         await self._client.aclose()

@@ -212,7 +212,37 @@ def unified_search(
         if res.failed_sources:
             console.print(f"Failed Sources: [red]{', '.join(res.failed_sources)}[/red]")
 
-    asyncio.run(_run_unified_search())
+@unified_app.command("stream")
+def unified_stream_cli(
+    query: str = typer.Argument("", help="Search query across all sources"),
+    media_type: str = typer.Option("all", "--media-type", "-m", help="Media type filter ('all', 'anime', 'manga')"),
+    page: int = typer.Option(1, "--page", "-p", help="Page number"),
+):
+    """Stream search results from all sources in real-time as they arrive."""
+    from loouwd.core.stream import stream_engine
+
+    async def _run_stream():
+        console.print(f"[bold green]Streaming multi-source results in real-time for query='{query}'...[/bold green]\n")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Source", style="cyan", no_wrap=True)
+        table.add_column("Title Name", style="bold white")
+        table.add_column("Media Type", style="blue")
+        table.add_column("Canonical URL", style="white")
+
+        count = 0
+        async for item in stream_engine.stream_browse(query=query, media_type=media_type, page=page):
+            count += 1
+            table.add_row(
+                item.source_id,
+                item.title[:45] + "..." if len(item.title) > 45 else item.title,
+                item.media_type,
+                item.canonical_url,
+            )
+
+        console.print(table)
+        console.print(f"Total Streamed Items: [bold yellow]{count}[/bold yellow]")
+
+    asyncio.run(_run_stream())
 
 
 @cache_app.command("clear")

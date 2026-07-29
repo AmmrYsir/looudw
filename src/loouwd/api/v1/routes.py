@@ -148,6 +148,29 @@ async def unified_feed(
     return await unified_service.browse_all(req)
 
 
+from fastapi.responses import StreamingResponse
+import json
+from loouwd.core.stream import stream_engine
+
+
+@router.get("/unified/stream")
+async def unified_stream(
+    query: str | None = Query(default=None),
+    media_type: str = Query(default="all"),
+    page: int = Query(default=1, ge=1),
+):
+    """Server-Sent Events (SSE) real-time streaming endpoint for multi-source search."""
+    valid_media_type = media_type if media_type in ["anime", "manga"] else "all"
+
+    async def _event_generator():
+        async for item in stream_engine.stream_browse(query=query, media_type=valid_media_type, page=page):
+            payload = item.model_dump(by_alias=True)
+            yield f"data: {json.dumps(payload)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(_event_generator(), media_type="text/event-stream")
+
+
 @router.post("/cache/clear")
 async def clear_cache():
     """Clear active in-memory cache."""
