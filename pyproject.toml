@@ -1,14 +1,27 @@
 [project]
 name = "loouwd"
 version = "0.1.0"
-description = "Add your description here"
+description = "Production-grade, ultra-fast FastAPI Source Adapter Registry and CLI Controller"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    "httpx[http2]>=0.27.0",
+    "orjson>=3.9.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.1.0",
+    "tenacity>=8.2.0",
+    "typer[all]>=0.9.0",
+    "rich>=13.7.0",
+]
 
 [project.scripts]
-loouwd = "loouwd:main"
+loouwd = "loouwd.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.12.0,<0.13.0"]
 build-backend = "uv_build"
+

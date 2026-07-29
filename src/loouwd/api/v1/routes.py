@@ -1,0 +1,124 @@
+from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import ORJSONResponse
+from loouwd.core.schemas import (
+    SourceManifest,
+    SourceBrowseRequest,
+    SourceBrowseResult,
+    SourceTitleDetails,
+    SourceTitleContent,
+    SourceReaderPages,
+    SourcePlayback,
+    SourceHealthCheck,
+)
+from loouwd.core.registry import registry
+from loouwd.core.context import default_context
+from loouwd.core.cache import global_cache
+
+router = APIRouter(prefix="/api/v1", default_response_class=ORJSONResponse)
+
+
+@router.get("/sources", response_model=list[SourceManifest])
+async def list_sources():
+    """List all registered source adapter manifests."""
+    return registry.list_manifests()
+
+
+@router.get("/sources/health", response_model=list[SourceHealthCheck])
+async def health_check_all():
+    """Run health audits against all registered adapters."""
+    return await registry.check_health_all(default_context)
+
+
+@router.get("/sources/{source_id}", response_model=SourceManifest)
+async def get_source_manifest(source_id: str):
+    """Retrieve detailed manifest for a specific source adapter."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return adapter.manifest
+
+
+@router.get("/sources/{source_id}/health", response_model=SourceHealthCheck)
+async def health_check_source(source_id: str):
+    """Run health audit for a single source adapter."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return await adapter.health_check(default_context)
+
+
+@router.post("/sources/{source_id}/browse", response_model=SourceBrowseResult)
+async def browse_source(source_id: str, request: SourceBrowseRequest):
+    """Browse or search title catalog of a specific source adapter."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return await adapter.search_titles(request, default_context)
+
+
+@router.get("/sources/{source_id}/titles/{source_title_id}", response_model=SourceTitleDetails)
+async def get_title_details(source_id: str, source_title_id: str):
+    """Get metadata details for a specific title."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return await adapter.get_title_details(source_title_id, default_context)
+
+
+@router.get("/sources/{source_id}/titles/{source_title_id}/content", response_model=SourceTitleContent)
+async def get_title_content(source_id: str, source_title_id: str):
+    """Get title content (episodes, chapters, or page list)."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return await adapter.get_title_content(source_title_id, default_context)
+
+
+@router.get("/sources/{source_id}/titles/{source_title_id}/pages", response_model=SourceReaderPages)
+async def get_reader_pages(
+    source_id: str, source_title_id: str, content_id: str | None = Query(default=None)
+):
+    """Get image reader pages for manga/doujin titles."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return await adapter.get_reader_pages(source_title_id, content_id, default_context)
+
+
+@router.get("/sources/{source_id}/titles/{source_title_id}/playback", response_model=SourcePlayback)
+async def get_playback(
+    source_id: str, source_title_id: str, content_id: str | None = Query(default=None)
+):
+    """Get video playback stream metadata for video titles."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    return await adapter.get_playback(source_title_id, content_id, default_context)
+
+
+@router.post("/cache/clear")
+async def clear_cache():
+    """Clear active in-memory cache."""
+    await global_cache.clear()
+    return {"message": "Cache cleared successfully."}
