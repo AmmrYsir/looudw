@@ -17,6 +17,21 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
 
+    # CORS & Security Settings
+    CORS_ORIGINS: list[str] | str = ["*"]
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        if isinstance(self.CORS_ORIGINS, str):
+            if self.CORS_ORIGINS.strip().startswith("["):
+                import json
+                try:
+                    return json.loads(self.CORS_ORIGINS)
+                except Exception:
+                    pass
+            return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        return self.CORS_ORIGINS
+
     # Cache Settings (In-Memory RAM Cache)
     CACHE_ENABLED: bool = True
     CACHE_TTL_SECONDS: int = 300
