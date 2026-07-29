@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
 
-    # Cache Settings
+    # Cache Settings (In-Memory RAM Cache)
     CACHE_ENABLED: bool = True
     CACHE_TTL_SECONDS: int = 300
     CACHE_MAXSIZE: int = 1000

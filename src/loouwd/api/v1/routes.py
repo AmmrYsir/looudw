@@ -117,6 +117,37 @@ async def get_playback(
     return await adapter.get_playback(source_title_id, content_id, default_context)
 
 
+from loouwd.services.unified import (
+    unified_service,
+    UnifiedBrowseRequest,
+    UnifiedBrowseResult,
+)
+
+
+@router.post("/unified/browse", response_model=UnifiedBrowseResult)
+async def unified_browse(request: UnifiedBrowseRequest):
+    """Unified search/browse across all registered source adapters in parallel."""
+    return await unified_service.browse_all(request)
+
+
+@router.get("/unified/feed/{media_type}", response_model=UnifiedBrowseResult)
+async def unified_feed(
+    media_type: str = "all",
+    query: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=24, ge=1, le=100),
+):
+    """Unified media feed aggregating items by media_type ('all', 'anime', 'manga')."""
+    valid_media_type = media_type if media_type in ["anime", "manga"] else "all"
+    req = UnifiedBrowseRequest(
+        query=query,
+        media_type=valid_media_type,
+        page=page,
+        per_page=per_page,
+    )
+    return await unified_service.browse_all(req)
+
+
 @router.post("/cache/clear")
 async def clear_cache():
     """Clear active in-memory cache."""

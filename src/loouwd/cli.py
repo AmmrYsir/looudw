@@ -19,9 +19,11 @@ app = typer.Typer(
 )
 
 sources_app = typer.Typer(help="Manage and inspect source adapters")
+unified_app = typer.Typer(help="Unified multi-source search and aggregation operations")
 cache_app = typer.Typer(help="Manage caching layer")
 
 app.add_typer(sources_app, name="sources")
+app.add_typer(unified_app, name="unified")
 app.add_typer(cache_app, name="cache")
 
 console = Console()
@@ -171,6 +173,46 @@ def details(
             await ctx.aclose()
 
     asyncio.run(_run_details())
+
+
+@unified_app.command("search")
+def unified_search(
+    query: str = typer.Argument("", help="Search query across all sources"),
+    media_type: str = typer.Option("all", "--media-type", "-m", help="Media type filter ('all', 'anime', 'manga')"),
+    page: int = typer.Option(1, "--page", "-p", help="Page number"),
+):
+    """Search across ALL registered sources concurrently."""
+    from loouwd.services.unified import unified_service, UnifiedBrowseRequest
+
+    async def _run_unified_search():
+        console.print(f"[bold green]Running unified search across all sources for query='{query}' (media_type={media_type}, page={page})...[/bold green]")
+        req = UnifiedBrowseRequest(query=query, media_type=media_type, page=page)
+        res = await unified_service.browse_all(req)
+
+        table = Table(
+            title=f"Unified Search Results (Page {res.page}/{res.total_pages} | Total: {res.total_items})",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        table.add_column("Source", style="cyan", no_wrap=True)
+        table.add_column("Title Name", style="bold white")
+        table.add_column("Media Type", style="blue")
+        table.add_column("Canonical URL", style="white")
+
+        for item in res.items:
+            table.add_row(
+                item.source_id,
+                item.title[:45] + "..." if len(item.title) > 45 else item.title,
+                item.media_type,
+                item.canonical_url,
+            )
+
+        console.print(table)
+        console.print(f"Sources Queried: [yellow]{', '.join(res.sources_queried)}[/yellow]")
+        if res.failed_sources:
+            console.print(f"Failed Sources: [red]{', '.join(res.failed_sources)}[/red]")
+
+    asyncio.run(_run_unified_search())
 
 
 @cache_app.command("clear")
