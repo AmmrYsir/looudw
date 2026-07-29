@@ -46,7 +46,7 @@ class Hentai20Adapter(BaseSourceAdapter):
         return SourceManifest(
             id=SOURCE_ID,
             name=SOURCE_NAME,
-            version="1.2.0",
+            version="1.3.0",
             description="Browse Hentai20 doujinshi and manga.",
             author="Sirochan Pro",
             website=BASE_URL,
@@ -84,12 +84,17 @@ class Hentai20Adapter(BaseSourceAdapter):
         else:
             url = f"{BASE_URL}/manga/page/{page}/" if page > 1 else f"{BASE_URL}/manga/"
 
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
         try:
-            html = await context.fetch_text(url)
+            html = await context.fetch_text(url, headers=headers)
             soup = BeautifulSoup(html, "lxml")
             items = []
+            seen = set()
 
-            for div in soup.select("div.c-tabs-item__content, div.page-item-detail"):
+            for div in soup.select("div.c-tabs-item__content, div.page-item-detail, div.item-thumb, div.badge-pos-2"):
                 link = div.select_one("h3.h4 a") or div.select_one("a[href*='/manga/']")
                 img = div.select_one("img")
                 if not link:
@@ -98,10 +103,14 @@ class Hentai20Adapter(BaseSourceAdapter):
                 href = link.get("href", "")
                 title = link.text.strip()
                 match = re.search(r"/manga/([a-z0-9-]+)", href, re.I)
-                if not match:
+                if not match or match.group(1) == "page":
                     continue
 
                 slug = match.group(1)
+                if slug in seen:
+                    continue
+                seen.add(slug)
+
                 thumb_url = img.get("src") or img.get("data-src") if img else None
 
                 items.append(
@@ -109,13 +118,40 @@ class Hentai20Adapter(BaseSourceAdapter):
                         source_id=SOURCE_ID,
                         source_title_id=slug,
                         canonical_url=urljoin(BASE_URL, href),
-                        title=title,
+                        title=title or f"Manga {slug}",
                         media_type="manga",
                         tracking_mode="read",
                         thumbnail_url=thumb_url,
                         total_chapters=1,
                     )
                 )
+
+            # Fallback direct link selector
+            if not items:
+                for a in soup.select('a[href*="/manga/"]'):
+                    href = a.get("href", "")
+                    title = a.get("title") or a.text.strip()
+                    match = re.search(r"/manga/([a-z0-9-]+)", href, re.I)
+                    if not match or match.group(1) == "page":
+                        continue
+
+                    slug = match.group(1)
+                    if slug in seen:
+                        continue
+                    seen.add(slug)
+
+                    items.append(
+                        SourceBrowseItem(
+                            source_id=SOURCE_ID,
+                            source_title_id=slug,
+                            canonical_url=urljoin(BASE_URL, href),
+                            title=title or f"Manga {slug}",
+                            media_type="manga",
+                            tracking_mode="read",
+                            thumbnail_url=None,
+                            total_chapters=1,
+                        )
+                    )
 
             return SourceBrowseResult(
                 items=items,
