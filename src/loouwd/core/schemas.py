@@ -69,7 +69,6 @@ class SourceManifest(BaseSchema):
     name: str
     version: str
     description: str
-    author: str
     website: str
     icon_url: str | None = Field(default=None, alias="iconUrl")
     supported_media_types: list[SourceMediaType] = Field(alias="supportedMediaTypes")
