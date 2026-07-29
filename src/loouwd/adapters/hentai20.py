@@ -36,7 +36,7 @@ except ImportError:
 SOURCE_ID = "hentai20"
 SOURCE_NAME = "Hentai20.io"
 BASE_URL = "https://hentai20.io"
-FAVICON_URL = "https://hentai20.io/wp-content/uploads/2024/05/cropped-210da20ddb1be20edd43583bcaf1061f628cbc16-300x300.jpg"
+FAVICON_URL = "/static/icons/hentai20.jpg"
 
 SORT_OPTIONS = [
     SourceFilterOption(value="latest", label="Latest Releases"),

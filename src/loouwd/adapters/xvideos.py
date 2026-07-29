@@ -34,7 +34,7 @@ except ImportError:
 SOURCE_ID = "xvideos"
 SOURCE_NAME = "XVideos"
 BASE_URL = "https://www.xvideos.com"
-FAVICON_URL = "https://www.xvideos.com/favicon.ico"
+FAVICON_URL = "/static/icons/xvideos.svg"
 
 CATEGORY_OPTIONS = [
     SourceFilterOption(value="", label="All Categories"),

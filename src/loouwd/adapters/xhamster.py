@@ -34,7 +34,7 @@ except ImportError:
 SOURCE_ID = "xhamster"
 SOURCE_NAME = "xHamster"
 BASE_URL = "https://xhamster.com"
-FAVICON_URL = "https://xhamster.com/favicon.ico"
+FAVICON_URL = "/static/icons/xhamsters.png"
 
 FEED_OPTIONS = [
     SourceFilterOption(value="best", label="Best"),

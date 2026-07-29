@@ -33,7 +33,7 @@ except ImportError:
 SOURCE_ID = "nhentai"
 SOURCE_NAME = "nhentai"
 BASE_URL = "https://nhentai.net"
-FAVICON_URL = "https://nhentai.net/favicon.png"
+FAVICON_URL = "/static/icons/nhentai.png"
 API_V2_BASE = "https://nhentai.net/api/v2"
 IMAGE_CDN_BASE = "https://i.nhentai.net"
 THUMB_CDN_BASE = "https://t.nhentai.net"

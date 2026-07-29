@@ -36,7 +36,7 @@ except ImportError:
 SOURCE_ID = "spankbang"
 SOURCE_NAME = "SpankBang"
 BASE_URL = "https://spankbang.com"
-FAVICON_URL = "https://spankbang.com/favicon.ico"
+FAVICON_URL = "/static/icons/spankbang.ico"
 
 FEED_OPTIONS = [
     SourceFilterOption(value="most_popular", label="Popular / Top"),

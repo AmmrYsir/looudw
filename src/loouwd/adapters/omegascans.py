@@ -35,7 +35,7 @@ except ImportError:
 SOURCE_ID = "omegascans"
 SOURCE_NAME = "Omegascans"
 BASE_URL = "https://omegascans.org"
-FAVICON_URL = "https://omegascans.org/icon.png"
+FAVICON_URL = "/static/icons/omegascans.ico"
 API_BASE_URL = "https://api.omegascans.org"
 
 COMMON_GENRES = [

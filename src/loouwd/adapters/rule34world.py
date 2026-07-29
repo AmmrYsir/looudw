@@ -35,7 +35,7 @@ except ImportError:
 SOURCE_ID = "rule34world"
 SOURCE_NAME = "Rule34world"
 BASE_URL = "https://rule34.world"
-FAVICON_URL = "https://rule34.world/favicon.ico"
+FAVICON_URL = "/static/icons/rule34world.ico"
 
 COMMON_TAGS = [
     "3d", "animated", "overwatch", "genshin impact", "league of legends",

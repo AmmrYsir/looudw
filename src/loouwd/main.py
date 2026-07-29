@@ -39,6 +39,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import os
+from fastapi.staticfiles import StaticFiles
+
+if os.path.exists("public"):
+    app.mount("/static", StaticFiles(directory="public"), name="static")
+
 app.include_router(api_v1_router)
 
 
