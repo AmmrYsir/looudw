@@ -66,7 +66,6 @@ class SpankBangAdapter(BaseSourceAdapter):
             name=SOURCE_NAME,
             version="2.0.0",
             description="Production-grade SpankBang video streaming engine with stream_data parser and Cloudflare Turnstile bypass.",
-            author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
             supported_media_types=["anime"],

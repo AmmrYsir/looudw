@@ -75,7 +75,6 @@ class XHamsterAdapter(BaseSourceAdapter):
             name=SOURCE_NAME,
             version="2.0.0",
             description="Production-grade xHamster video database with direct MP4/HLS stream resolution.",
-            author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
             supported_media_types=["anime"],

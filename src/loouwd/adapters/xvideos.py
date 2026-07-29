@@ -68,7 +68,6 @@ class XVideosAdapter(BaseSourceAdapter):
             name=SOURCE_NAME,
             version="2.0.0",
             description="Production-grade XVideos video database with html5player JS stream resolution.",
-            author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
             supported_media_types=["anime"],

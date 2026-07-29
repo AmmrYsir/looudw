@@ -79,7 +79,6 @@ class NHentaiAdapter(BaseSourceAdapter):
             name=SOURCE_NAME,
             version="2.1.0",
             description="Official nhentai v2 REST API engine with dynamic API-native sorting and filters.",
-            author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
             supported_media_types=["manga"],
