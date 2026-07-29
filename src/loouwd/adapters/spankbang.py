@@ -1,4 +1,6 @@
 import re
+import json
+from typing import Any
 from urllib.parse import quote, urljoin
 from bs4 import BeautifulSoup
 
@@ -18,6 +20,7 @@ from loouwd.core.schemas import (
     SourceReaderPages,
     SourcePlayback,
     SourceTitleContentSummary,
+    SourceTagSuggestion,
 )
 from loouwd.core.context import SourceExecutionContext
 from loouwd.core.registry import registry, BaseSourceAdapter
@@ -39,35 +42,37 @@ FEED_OPTIONS = [
     SourceFilterOption(value="most_popular", label="Popular / Top"),
     SourceFilterOption(value="trending_videos", label="Trending"),
     SourceFilterOption(value="new_videos", label="Newest"),
+    SourceFilterOption(value="upcoming_videos", label="Upcoming"),
 ]
 
-TAG_OPTIONS = [
-    SourceFilterOption(value="", label="All Tags"),
-    SourceFilterOption(value="anime", label="Anime"),
-    SourceFilterOption(value="creampie", label="Creampie"),
-    SourceFilterOption(value="gangbang", label="Gangbang"),
-    SourceFilterOption(value="hentai", label="Hentai"),
-    SourceFilterOption(value="blowjob", label="Blowjob"),
-    SourceFilterOption(value="interracial", label="Interracial"),
+COMMON_TAGS = [
+    "anime", "hentai", "creampie", "gangbang", "blowjob", "interracial",
+    "asian", "japanese", "3d", "cosplay", "uncensored", "full color",
+    "milf", "ebony", "latina", "amateur", "hardcore"
 ]
 
 
 @registry.register
 class SpankBangAdapter(BaseSourceAdapter):
+    """
+    Production-grade SpankBang video database adapter with Cloudflare Turnstile
+    bypass engine and stream_data JSON quality parser (1080p, 720p, 480p, HLS m3u8).
+    """
+
     @property
     def manifest(self) -> SourceManifest:
         return SourceManifest(
             id=SOURCE_ID,
             name=SOURCE_NAME,
-            version="1.3.1",
-            description="Browse SpankBang video database with Cloudflare bypass engine.",
+            version="2.0.0",
+            description="Production-grade SpankBang video streaming engine with stream_data parser and Cloudflare Turnstile bypass.",
             author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
             supported_media_types=["anime"],
             auth=SourceAuthConfig(type="none"),
             features=SourceFeatureSet(
-                browse=True, search=True, title_details=True, favorites=True
+                browse=True, search=True, title_details=True, favorites=True, tag_autocomplete=True
             ),
             browse_config=SourceBrowseConfig(
                 supports_pagination=True,
@@ -81,10 +86,9 @@ class SpankBangAdapter(BaseSourceAdapter):
                     ),
                     SourceFilterDefinition(
                         key="tag",
-                        label="Tag",
-                        type="select",
+                        label="Tag Query (e.g. 'anime', 'hentai')",
+                        type="text",
                         default_value="",
-                        options=TAG_OPTIONS,
                     ),
                 ],
             ),
@@ -95,7 +99,7 @@ class SpankBangAdapter(BaseSourceAdapter):
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "accept-language": "en-US,en;q=0.9",
             "cookie": "country=US; age_verified=1",
-            "referer": BASE_URL,
+            "referer": f"{BASE_URL}/",
             "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
         }
         try:
@@ -109,19 +113,19 @@ class SpankBangAdapter(BaseSourceAdapter):
                             if res.status_code == 200 and len(res.text) > 10000:
                                 return res.text
                     except Exception as curl_err:
-                        logger.debug(f"TLS impersonation target '{profile}' failed: {curl_err}")
+                        logger.debug(f"SpankBang TLS impersonation target '{profile}' failed: {curl_err}")
 
-            logger.warning(f"SpankBang at '{url}' request could not bypass Cloudflare Turnstile.")
+            logger.warning(f"SpankBang request to '{url}' failed.")
             return ""
 
-    @cached(ttl=300, key_prefix="spankbang:search")
+    @cached(ttl=300, key_prefix="spankbang:v2:search")
     async def search_titles(
         self, request: SourceBrowseRequest, context: SourceExecutionContext
     ) -> SourceBrowseResult:
         page = max(1, request.page)
         query = request.query.strip() if request.query else ""
         feed = request.filters.get("feed", "most_popular")
-        tag = request.filters.get("tag", "")
+        tag = request.filters.get("tag", "").strip()
 
         if query:
             url = f"{BASE_URL}/s/{quote(query)}/{page}/"
@@ -131,6 +135,8 @@ class SpankBangAdapter(BaseSourceAdapter):
             url = f"{BASE_URL}/trending_videos/{page}/"
         elif feed == "new_videos":
             url = f"{BASE_URL}/new_videos/{page}/"
+        elif feed == "upcoming_videos":
+            url = f"{BASE_URL}/upcoming_videos/{page}/"
         else:
             url = f"{BASE_URL}/most_popular/{page}/"
 
@@ -166,13 +172,18 @@ class SpankBangAdapter(BaseSourceAdapter):
             seen_ids.add(vid)
 
             thumb_url = img.get("data-src") or img.get("src") if img else None
+            if thumb_url and thumb_url.startswith("//"):
+                thumb_url = f"https:{thumb_url}"
+            raw_title = link.get("title") or link.text.strip()
+            clean_title = re.sub(r"^\s*(?:HD|4K|1080p|720p|\d+m|\d+s|\n)+\s*", "", raw_title, flags=re.I)
+            clean_title = re.sub(r"\s+", " ", clean_title).strip()
 
             items.append(
                 SourceBrowseItem(
                     source_id=SOURCE_ID,
                     source_title_id=vid,
                     canonical_url=urljoin(BASE_URL, href),
-                    title=title or f"Video {vid}",
+                    title=clean_title or f"SpankBang Video {vid}",
                     media_type="anime",
                     tracking_mode="watch",
                     thumbnail_url=thumb_url,
@@ -198,9 +209,9 @@ class SpankBangAdapter(BaseSourceAdapter):
                         source_id=SOURCE_ID,
                         source_title_id=vid,
                         canonical_url=urljoin(BASE_URL, href),
-                        title=title or f"Video {vid}",
+                        title=title or f"SpankBang Video {vid}",
                         media_type="anime",
-                        tracking_mode="read" if "manga" in href else "watch",
+                        tracking_mode="watch",
                         thumbnail_url=None,
                         total_episodes=1,
                     )
@@ -213,45 +224,49 @@ class SpankBangAdapter(BaseSourceAdapter):
             applied_filters=request.filters,
         )
 
-    @cached(ttl=600, key_prefix="spankbang:details")
+    @cached(ttl=600, key_prefix="spankbang:v2:details")
     async def get_title_details(
         self, source_title_id: str, context: SourceExecutionContext
     ) -> SourceTitleDetails:
         canonical_url = f"{BASE_URL}/{source_title_id}/video/"
         html = await self._fetch_html_with_fallback(context, canonical_url)
-        if html:
-            soup = BeautifulSoup(html, "lxml")
-            title_el = soup.select_one("h1") or soup.select_one("title")
-            title = title_el.text.strip() if title_el else f"Video {source_title_id}"
-            img_el = soup.select_one("meta[property='og:image']")
-            thumb_url = img_el.get("content") if img_el else None
-            tags = [a.text.strip() for a in soup.select("a[href*='/tag/']")]
 
+        if not html:
             return SourceTitleDetails(
                 source_id=SOURCE_ID,
                 source_title_id=source_title_id,
                 canonical_url=canonical_url,
-                title=title,
+                title=f"SpankBang Video {source_title_id}",
                 media_type="anime",
                 tracking_mode="watch",
-                thumbnail_url=thumb_url,
-                tags=tags,
-                content_summary=SourceTitleContentSummary(
-                    kind="episodes",
-                    total_count=1,
-                    available_count=1,
-                    in_app_capabilities=["player"],
-                ),
+                content_summary=SourceTitleContentSummary(kind="episodes", total_count=1, available_count=1),
             )
+
+        soup = BeautifulSoup(html, "lxml")
+        title_el = soup.select_one("h1") or soup.select_one("title")
+        raw_title = title_el.text.strip() if title_el else f"SpankBang Video {source_title_id}"
+        clean_title = raw_title.replace(" - SpankBang", "").strip()
+
+        img_el = soup.select_one("meta[property='og:image']")
+        thumb_url = img_el.get("content") if img_el else None
+
+        tags = [a.text.strip() for a in soup.select("a[href*='/tag/']")]
 
         return SourceTitleDetails(
             source_id=SOURCE_ID,
             source_title_id=source_title_id,
             canonical_url=canonical_url,
-            title=f"Video {source_title_id}",
+            title=clean_title,
             media_type="anime",
             tracking_mode="watch",
-            content_summary=SourceTitleContentSummary(kind="episodes", total_count=1, available_count=1),
+            thumbnail_url=thumb_url,
+            tags=tags,
+            content_summary=SourceTitleContentSummary(
+                kind="episodes",
+                total_count=1,
+                available_count=1,
+                in_app_capabilities=["player"],
+            ),
         )
 
     async def get_title_content(
@@ -274,28 +289,66 @@ class SpankBangAdapter(BaseSourceAdapter):
     ) -> SourceReaderPages:
         return SourceReaderPages(content_id=source_title_id, pages=[])
 
-    @cached(ttl=600, key_prefix="spankbang:playback")
+    @cached(ttl=600, key_prefix="spankbang:v2:playback")
     async def get_playback(
         self, source_title_id: str, content_id: str | None, context: SourceExecutionContext
     ) -> SourcePlayback:
-        embed_url = f"{BASE_URL}/{source_title_id}/embed/"
         canonical_url = f"{BASE_URL}/{source_title_id}/video/"
+        embed_url = f"{BASE_URL}/{source_title_id}/embed/"
         html = await self._fetch_html_with_fallback(context, canonical_url)
+
+        stream_url = embed_url
+        poster_url = None
+        duration = None
+
         if html:
-            stream_match = re.search(r'var\s+stream_url\s*=\s*[\'"]([^\'"]+)[\'"]', html)
-            stream_url = stream_match.group(1) if stream_match else embed_url
-            return SourcePlayback(
-                content_id=content_id or source_title_id,
-                title=f"SpankBang Stream {source_title_id}",
-                stream_url=stream_url,
-                mime_type="video/mp4",
-                canonical_url=canonical_url,
-            )
+            match = re.search(r'var\s+stream_data\s*=\s*(\{.*?\});', html, re.DOTALL)
+            if match:
+                try:
+                    js_dict = match.group(1).replace("'", '"')
+                    # Standardize JSON format
+                    data = json.loads(js_dict)
+                    for key in ["1080p", "720p", "480p", "main", "240p", "m3u8"]:
+                        urls = data.get(key, [])
+                        if urls and isinstance(urls, list) and urls[0]:
+                            stream_url = urls[0]
+                            break
+
+                    poster_url = data.get("cover_image") or data.get("thumbnail")
+                    duration = data.get("length")
+                except Exception as json_err:
+                    logger.debug(f"SpankBang stream_data JSON parse fallback: {json_err}")
+
+            if stream_url == embed_url:
+                stream_match = re.search(r'var\s+stream_url\s*=\s*[\'"]([^\'"]+)[\'"]', html)
+                if stream_match:
+                    stream_url = stream_match.group(1)
+
+        details = await self.get_title_details(source_title_id, context)
 
         return SourcePlayback(
             content_id=content_id or source_title_id,
-            title=f"SpankBang Embed {source_title_id}",
-            stream_url=embed_url,
-            mime_type="video/mp4",
+            title=details.title,
+            stream_url=stream_url,
+            mime_type="application/x-mpegURL" if stream_url.endswith(".m3u8") else "video/mp4",
+            poster_url=poster_url or details.thumbnail_url,
+            duration_seconds=duration,
             canonical_url=canonical_url,
         )
+
+    @cached(ttl=600, key_prefix="spankbang:v2:autocomplete")
+    async def autocomplete_tags(
+        self, query: str, tag_type: str = "tag", context: SourceExecutionContext | None = None
+    ) -> list[SourceTagSuggestion]:
+        q = query.lower().strip()
+        suggestions = []
+        for tag in COMMON_TAGS:
+            if q in tag:
+                suggestions.append(
+                    SourceTagSuggestion(
+                        name=tag,
+                        type="tag",
+                        description=f"SpankBang tag query for '{tag}'",
+                    )
+                )
+        return suggestions
