@@ -27,7 +27,14 @@ SOURCE_NAME = "SpankBang"
 BASE_URL = "https://spankbang.com"
 FAVICON_URL = "https://spankbang.com/favicon.ico"
 
+FEED_OPTIONS = [
+    SourceFilterOption(value="most_popular", label="Popular / Top"),
+    SourceFilterOption(value="trending_videos", label="Trending"),
+    SourceFilterOption(value="new_videos", label="Newest"),
+]
+
 TAG_OPTIONS = [
+    SourceFilterOption(value="", label="All Tags"),
     SourceFilterOption(value="anime", label="Anime"),
     SourceFilterOption(value="creampie", label="Creampie"),
     SourceFilterOption(value="gangbang", label="Gangbang"),
@@ -45,7 +52,7 @@ class SpankBangAdapter(BaseSourceAdapter):
             id=SOURCE_ID,
             name=SOURCE_NAME,
             version="1.2.0",
-            description="Browse SpankBang video database with async high-speed parser.",
+            description="Browse SpankBang video database with Top/Popular and Trending feeds.",
             author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
@@ -58,11 +65,19 @@ class SpankBangAdapter(BaseSourceAdapter):
                 supports_pagination=True,
                 filters=[
                     SourceFilterDefinition(
+                        key="feed",
+                        label="Browse Feed",
+                        type="select",
+                        default_value="most_popular",
+                        options=FEED_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
                         key="tag",
                         label="Tag",
                         type="select",
+                        default_value="",
                         options=TAG_OPTIONS,
-                    )
+                    ),
                 ],
             ),
         )
@@ -73,14 +88,19 @@ class SpankBangAdapter(BaseSourceAdapter):
     ) -> SourceBrowseResult:
         page = max(1, request.page)
         query = request.query.strip() if request.query else ""
-        tag = request.filters.get("tag")
+        feed = request.filters.get("feed", "most_popular")
+        tag = request.filters.get("tag", "")
 
         if query:
             url = f"{BASE_URL}/s/{quote(query)}/{page}/"
         elif tag:
             url = f"{BASE_URL}/tag/{quote(str(tag))}/{page}/"
+        elif feed == "trending_videos":
+            url = f"{BASE_URL}/trending_videos/{page}/"
+        elif feed == "new_videos":
+            url = f"{BASE_URL}/new_videos/{page}/"
         else:
-            url = f"{BASE_URL}/trending/{page}/" if page > 1 else BASE_URL
+            url = f"{BASE_URL}/most_popular/{page}/"
 
         try:
             html = await context.fetch_text(url)

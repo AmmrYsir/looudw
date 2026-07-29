@@ -20,6 +20,8 @@ async def lifespan(app: FastAPI):
     await default_context.aclose()
 
 
+from loouwd.core.rate_limit import RateLimitMiddleware
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
@@ -28,6 +30,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

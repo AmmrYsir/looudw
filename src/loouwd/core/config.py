@@ -33,5 +33,8 @@ class Settings(BaseSettings):
     )
     PROXY_URL: str | None = None
 
+    # Rate Limit Settings
+    RATE_LIMIT_PER_MINUTE: int = 120  # Set to 0 to disable rate limiting
+
 
 settings = Settings()

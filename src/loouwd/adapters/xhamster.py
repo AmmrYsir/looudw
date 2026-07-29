@@ -27,7 +27,14 @@ SOURCE_NAME = "xHamster"
 BASE_URL = "https://xhamster.com"
 FAVICON_URL = "https://xhamster.com/favicon.ico"
 
+FEED_OPTIONS = [
+    SourceFilterOption(value="best", label="Best"),
+    SourceFilterOption(value="most_viewed", label="Most Viewed"),
+    SourceFilterOption(value="most_commented", label="Most Commented"),
+]
+
 CATEGORY_OPTIONS = [
+    SourceFilterOption(value="", label="All categories"),
     SourceFilterOption(value="/categories/amateur", label="Amateur"),
     SourceFilterOption(value="/categories/mature", label="Mature"),
     SourceFilterOption(value="/categories/anal", label="Anal"),
@@ -45,7 +52,7 @@ class XHamsterAdapter(BaseSourceAdapter):
             id=SOURCE_ID,
             name=SOURCE_NAME,
             version="1.2.0",
-            description="Browse xHamster video catalog.",
+            description="Browse xHamster video catalog with Top, Most Viewed, and Best sorting.",
             author="Sirochan Pro",
             website=BASE_URL,
             icon_url=FAVICON_URL,
@@ -58,11 +65,19 @@ class XHamsterAdapter(BaseSourceAdapter):
                 supports_pagination=True,
                 filters=[
                     SourceFilterDefinition(
+                        key="feed",
+                        label="Sort By",
+                        type="select",
+                        default_value="best",
+                        options=FEED_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
                         key="category",
                         label="Category",
                         type="select",
+                        default_value="",
                         options=CATEGORY_OPTIONS,
-                    )
+                    ),
                 ],
             ),
         )
@@ -73,14 +88,20 @@ class XHamsterAdapter(BaseSourceAdapter):
     ) -> SourceBrowseResult:
         page = max(1, request.page)
         query = request.query.strip() if request.query else ""
-        category = request.filters.get("category")
+        feed = request.filters.get("feed", "best")
+        category = request.filters.get("category", "")
 
         if query:
             url = f"{BASE_URL}/search/{quote(query)}?page={page}"
         elif category:
             url = f"{BASE_URL}{category}/{page}" if page > 1 else f"{BASE_URL}{category}"
+        elif feed == "most_viewed":
+            url = f"{BASE_URL}/most-viewed/{page}" if page > 1 else f"{BASE_URL}/most-viewed/"
+        elif feed == "most_commented":
+            url = f"{BASE_URL}/most-commented/{page}" if page > 1 else f"{BASE_URL}/most-commented/"
         else:
-            url = f"{BASE_URL}/{page}" if page > 1 else BASE_URL
+            # default: best feed
+            url = f"{BASE_URL}/best/{page}" if page > 1 else f"{BASE_URL}/best/"
 
         try:
             html = await context.fetch_text(url)
@@ -196,7 +217,6 @@ class XHamsterAdapter(BaseSourceAdapter):
         embed_url = f"{BASE_URL}/embed/{source_title_id}"
         try:
             html = await context.fetch_text(canonical_url)
-            # Match window.initials or MP4 stream links
             match = re.search(r'"fallbackUrl"\s*:\s*"([^"]+)"', html) or re.search(r'"quality_720p"\s*:\s*"([^"]+)"', html)
             stream_url = match.group(1).replace("\\/", "/") if match else embed_url
 
