@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query, status
-from fastapi.responses import ORJSONResponse
+import os
+from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi.responses import ORJSONResponse, FileResponse
 from loouwd.core.schemas import (
     SourceManifest,
     SourceBrowseRequest,
@@ -17,10 +18,18 @@ from loouwd.core.cache import global_cache
 router = APIRouter(prefix="/api/v1", default_response_class=ORJSONResponse)
 
 
+def _format_manifest(manifest: SourceManifest, request: Request | None = None) -> SourceManifest:
+    if request and manifest.icon_url and str(manifest.icon_url).startswith("/"):
+        base_url = str(request.base_url).rstrip("/")
+        full_icon_url = f"{base_url}{manifest.icon_url}"
+        return manifest.model_copy(update={"icon_url": full_icon_url})
+    return manifest
+
+
 @router.get("/sources", response_model=list[SourceManifest])
-async def list_sources():
-    """List all registered source adapter manifests."""
-    return registry.list_manifests()
+async def list_sources(request: Request):
+    """List all registered source adapter manifests with absolute icon URLs."""
+    return [_format_manifest(m, request) for m in registry.list_manifests()]
 
 
 @router.get("/sources/health", response_model=list[SourceHealthCheck])
@@ -30,15 +39,44 @@ async def health_check_all():
 
 
 @router.get("/sources/{source_id}", response_model=SourceManifest)
-async def get_source_manifest(source_id: str):
-    """Retrieve detailed manifest for a specific source adapter."""
+async def get_source_manifest(source_id: str, request: Request):
+    """Retrieve detailed manifest for a specific source adapter with absolute icon URL."""
     adapter = registry.get(source_id)
     if not adapter:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Source adapter '{source_id}' not found.",
         )
-    return adapter.manifest
+    return _format_manifest(adapter.manifest, request)
+
+
+@router.get("/sources/{source_id}/icon")
+async def get_source_icon(source_id: str):
+    """Stream image response of source adapter icon."""
+    adapter = registry.get(source_id)
+    if not adapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source adapter '{source_id}' not found.",
+        )
+    icon_url = str(adapter.manifest.icon_url or "")
+    if icon_url.startswith("/static/"):
+        relative_path = icon_url[len("/static/"):]
+        file_path = os.path.join("public", relative_path)
+    elif icon_url.startswith("/"):
+        file_path = os.path.join("public", icon_url.lstrip("/"))
+    else:
+        file_path = icon_url
+
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Icon file for source '{source_id}' not found on server.",
+        )
+    return FileResponse(
+        file_path,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/sources/{source_id}/health", response_model=SourceHealthCheck)
