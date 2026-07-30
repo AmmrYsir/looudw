@@ -60,7 +60,7 @@ class Rule34WorldAdapter(BaseSourceAdapter):
             description="Production-grade Rule34.world video and art catalog engine.",
             website=BASE_URL,
             icon_url=FAVICON_URL,
-            supported_media_types=["anime"],
+            supported_media_types=["anime", "manga"],
             auth=SourceAuthConfig(type="none"),
             features=SourceFeatureSet(
                 browse=True, search=True, title_details=True, favorites=True, tag_autocomplete=True
