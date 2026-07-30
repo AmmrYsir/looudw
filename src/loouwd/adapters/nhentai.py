@@ -208,7 +208,11 @@ class NHentaiAdapter(BaseSourceAdapter):
             thumb_obj = g.get("thumbnail") or g.get("cover")
             thumb_url = None
             if isinstance(thumb_obj, dict) and thumb_obj.get("path"):
-                thumb_url = f"{THUMB_CDN_BASE}/{thumb_obj.get('path')}"
+                p = thumb_obj.get("path")
+                thumb_url = p if p.startswith("http") else f"{THUMB_CDN_BASE}/{p}"
+            elif isinstance(thumb_obj, str) and thumb_obj.strip():
+                p = thumb_obj.strip()
+                thumb_url = p if p.startswith("http") else f"{THUMB_CDN_BASE}/{p}"
             elif g.get("media_id"):
                 thumb_url = f"{THUMB_CDN_BASE}/galleries/{g.get('media_id')}/thumb.jpg"
 
@@ -258,7 +262,13 @@ class NHentaiAdapter(BaseSourceAdapter):
         thumb_obj = g.get("cover") or g.get("thumbnail")
         thumb_url = None
         if isinstance(thumb_obj, dict) and thumb_obj.get("path"):
-            thumb_url = f"{THUMB_CDN_BASE}/{thumb_obj.get('path')}"
+            p = thumb_obj.get("path")
+            thumb_url = p if p.startswith("http") else f"{THUMB_CDN_BASE}/{p}"
+        elif isinstance(thumb_obj, str) and thumb_obj.strip():
+            p = thumb_obj.strip()
+            thumb_url = p if p.startswith("http") else f"{THUMB_CDN_BASE}/{p}"
+        elif g.get("media_id"):
+            thumb_url = f"{THUMB_CDN_BASE}/galleries/{g.get('media_id')}/cover.jpg"
 
         tags = [t.get("name") for t in g.get("tags", []) if isinstance(t, dict) and t.get("name")]
         num_pages = g.get("num_pages") or len(g.get("pages", []))
