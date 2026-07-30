@@ -154,13 +154,12 @@ class SpankBangAdapter(BaseSourceAdapter):
 
         video_blocks = soup.select('div[data-testid="video-item"], div.video-item, div.js-video-item, div.video_item')
         for div in video_blocks:
-            link = div.select_one("a[href*='/video/']") or div.select_one("a.n") or div.select_one("a")
+            link = div.select_one("a.n") or div.select_one("a[title]") or div.select_one("a[href*='/video/']") or div.select_one("a")
             img = div.select_one("img")
             if not link:
                 continue
 
             href = link.get("href", "")
-            title = link.get("title") or link.text.strip()
             match = re.search(r"/([\da-z]+)/(?:video|play|embed)", href, re.I)
             if not match:
                 continue
@@ -173,9 +172,15 @@ class SpankBangAdapter(BaseSourceAdapter):
             thumb_url = img.get("data-src") or img.get("src") if img else None
             if thumb_url and thumb_url.startswith("//"):
                 thumb_url = f"https:{thumb_url}"
+
             raw_title = link.get("title") or link.text.strip()
             clean_title = re.sub(r"^\s*(?:HD|4K|1080p|720p|\d+m|\d+s|\n)+\s*", "", raw_title, flags=re.I)
             clean_title = re.sub(r"\s+", " ", clean_title).strip()
+            if re.match(r"^\d+[ms]$", clean_title, re.I):
+                alt_link = div.select_one("a.n") or div.select_one("a[title]")
+                if alt_link:
+                    clean_title = alt_link.get("title") or alt_link.text.strip()
+                    clean_title = re.sub(r"\s+", " ", clean_title).strip()
 
             items.append(
                 SourceBrowseItem(

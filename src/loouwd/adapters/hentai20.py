@@ -136,7 +136,7 @@ class Hentai20Adapter(BaseSourceAdapter):
         if query:
             url = f"{BASE_URL}/page/{page}/?s={quote(query)}&post_type=wp-manga" if page > 1 else f"{BASE_URL}/?s={quote(query)}&post_type=wp-manga"
         elif genre:
-            url = f"{BASE_URL}/manga-genre/{genre}/page/{page}/" if page > 1 else f"{BASE_URL}/manga-genre/{genre}/"
+            url = f"{BASE_URL}/genres/{genre}/page/{page}/" if page > 1 else f"{BASE_URL}/genres/{genre}/"
             if sort:
                 url += f"?m_orderby={quote(str(sort))}"
         else:
