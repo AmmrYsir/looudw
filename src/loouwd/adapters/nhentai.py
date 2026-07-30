@@ -176,15 +176,15 @@ class NHentaiAdapter(BaseSourceAdapter):
         full_query = " ".join(query_parts)
 
         # Construct API v2 URL
-        if full_query:
-            url = f"{API_V2_BASE}/galleries?query={quote(full_query)}&page={page}"
+        if full_query or (sort and sort != "recent"):
+            search_query = full_query if full_query else "*"
+            url = f"{API_V2_BASE}/search?query={quote(search_query)}&page={page}"
             if sort and sort != "recent":
                 url += f"&sort={quote(str(sort))}"
         else:
             url = f"{API_V2_BASE}/galleries?page={page}"
-            if sort:
-                url += f"&sort={quote(str(sort))}"
 
+        logger.info(f"[nhentai] Constructed URL: {url}")
         data = await self._fetch_api_json(context, url)
         if not data or not isinstance(data, dict):
             return SourceBrowseResult(items=[], page=page, total_pages=1)
