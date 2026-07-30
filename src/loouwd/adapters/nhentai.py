@@ -198,13 +198,12 @@ class NHentaiAdapter(BaseSourceAdapter):
                 continue
 
             gid = str(g.get("id"))
-            title_obj = g.get("title") or {}
-            title = (
-                title_obj.get("pretty")
-                or title_obj.get("english")
-                or title_obj.get("japanese")
-                or f"Gallery {gid}"
-            )
+            title_obj = g.get("title")
+            title = None
+            if isinstance(title_obj, dict):
+                title = title_obj.get("pretty") or title_obj.get("english") or title_obj.get("japanese")
+            if not title:
+                title = g.get("english_title") or g.get("japanese_title") or f"Gallery {gid}"
 
             thumb_obj = g.get("thumbnail") or g.get("cover")
             thumb_url = None
