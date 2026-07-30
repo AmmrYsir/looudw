@@ -1,7 +1,7 @@
 import time
 import asyncio
 from fastapi import Request, Response, status
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from loouwd.core.config import settings
 from loouwd.core.logging import logger
@@ -38,7 +38,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if len(valid_timestamps) >= limit:
                 logger.warning(f"Rate limit exceeded for IP: {client_ip} on path: {request.url.path}")
                 retry_after = int(valid_timestamps[0] + self.window_seconds - now) + 1
-                return ORJSONResponse(
+                return JSONResponse(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     content={
                         "error": "rate_limit_exceeded",

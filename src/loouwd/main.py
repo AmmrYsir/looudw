@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse
 
 from loouwd.core.config import settings
 from loouwd.core.logging import logger
@@ -26,7 +25,6 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Ultra-fast production-grade FastAPI Source Adapter Registry",
-    default_response_class=ORJSONResponse,
     lifespan=lifespan,
 )
 
@@ -48,7 +46,7 @@ if os.path.exists("public"):
 app.include_router(api_v1_router)
 
 
-@app.get("/", response_class=ORJSONResponse)
+@app.get("/")
 async def root():
     return {
         "name": settings.APP_NAME,

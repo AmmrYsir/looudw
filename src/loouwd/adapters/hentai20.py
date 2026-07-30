@@ -272,10 +272,13 @@ class Hentai20Adapter(BaseSourceAdapter):
         self, source_title_id: str, content_id: str | None, context: SourceExecutionContext
     ) -> SourceReaderPages:
         chap_slug = content_id or "chapter-1"
-        if not chap_slug.startswith("chapter-"):
-            chap_slug = f"chapter-{chap_slug}"
+        if chap_slug.startswith(f"{source_title_id}-"):
+            url = f"{BASE_URL}/{chap_slug}/"
+        elif chap_slug.startswith("chapter-"):
+            url = f"{BASE_URL}/{source_title_id}-{chap_slug}/"
+        else:
+            url = f"{BASE_URL}/{source_title_id}-chapter-{chap_slug}/"
 
-        url = f"{BASE_URL}/{source_title_id}-{chap_slug}/"
         html = await self._fetch_html(context, url)
         if not html:
             return SourceReaderPages(content_id=chap_slug, pages=[])

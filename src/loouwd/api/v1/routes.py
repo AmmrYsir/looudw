@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from fastapi.responses import ORJSONResponse, FileResponse
+from fastapi.responses import FileResponse
 from loouwd.core.schemas import (
     SourceManifest,
     SourceBrowseRequest,
@@ -15,7 +15,7 @@ from loouwd.core.registry import registry
 from loouwd.core.context import default_context
 from loouwd.core.cache import global_cache
 
-router = APIRouter(prefix="/api/v1", default_response_class=ORJSONResponse)
+router = APIRouter(prefix="/api/v1")
 
 
 def _format_manifest(manifest: SourceManifest, request: Request | None = None) -> SourceManifest:
