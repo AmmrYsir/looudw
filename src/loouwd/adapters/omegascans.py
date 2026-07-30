@@ -38,10 +38,33 @@ BASE_URL = "https://omegascans.org"
 FAVICON_URL = "/static/icons/omegascans.ico"
 API_BASE_URL = "https://api.omegascans.org"
 
+SORT_OPTIONS = [
+    SourceFilterOption(value="latest", label="Latest / Recent"),
+    SourceFilterOption(value="title", label="Alphabetical Title"),
+    SourceFilterOption(value="rating", label="Top Rated"),
+    SourceFilterOption(value="created_at", label="Date Added"),
+    SourceFilterOption(value="updated_at", label="Recently Updated"),
+]
+
+ORDER_OPTIONS = [
+    SourceFilterOption(value="desc", label="Descending (Z-A / Newest)"),
+    SourceFilterOption(value="asc", label="Ascending (A-Z / Oldest)"),
+]
+
+STATUS_OPTIONS = [
+    SourceFilterOption(value="", label="All Statuses"),
+    SourceFilterOption(value="Completed", label="Completed"),
+    SourceFilterOption(value="Ongoing", label="Ongoing"),
+]
+
 COMMON_GENRES = [
     "Action", "Adult", "Comedy", "Drama", "Ecchi", "Fantasy", "Harem",
     "Manhwa", "Martial Arts", "Mature", "Mystery", "Romance", "School Life",
     "Sci-fi", "Seinen", "Slice of Life", "Smut", "Supernatural"
+]
+
+GENRE_OPTIONS = [SourceFilterOption(value="", label="All Genres")] + [
+    SourceFilterOption(value=g, label=g) for g in COMMON_GENRES
 ]
 
 
@@ -49,7 +72,7 @@ COMMON_GENRES = [
 class OmegaScansAdapter(BaseSourceAdapter):
     """
     Production-grade Omegascans REST API adapter with dynamic chapter resolution,
-    JSON image reader payload parsing, and TLS fingerprint protection.
+    API-native tag/genre filtering, status filtering, sort control, and TLS protection.
     """
 
     @property
@@ -57,7 +80,7 @@ class OmegaScansAdapter(BaseSourceAdapter):
         return SourceManifest(
             id=SOURCE_ID,
             name=SOURCE_NAME,
-            version="2.0.0",
+            version="2.1.0",
             description="Production-grade Omegascans REST API manhwa and webtoon engine.",
             website=BASE_URL,
             icon_url=FAVICON_URL,
@@ -70,11 +93,33 @@ class OmegaScansAdapter(BaseSourceAdapter):
                 supports_pagination=True,
                 filters=[
                     SourceFilterDefinition(
-                        key="genre",
-                        label="Genre Query (e.g. 'Action', 'Romance')",
-                        type="text",
+                        key="sort",
+                        label="Sort By",
+                        type="select",
+                        default_value="latest",
+                        options=SORT_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
+                        key="order",
+                        label="Order Direction",
+                        type="select",
+                        default_value="desc",
+                        options=ORDER_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
+                        key="status",
+                        label="Publication Status",
+                        type="select",
                         default_value="",
-                    )
+                        options=STATUS_OPTIONS,
+                    ),
+                    SourceFilterDefinition(
+                        key="genre",
+                        label="Genre",
+                        type="select",
+                        default_value="",
+                        options=GENRE_OPTIONS,
+                    ),
                 ],
             ),
         )
@@ -101,6 +146,17 @@ class OmegaScansAdapter(BaseSourceAdapter):
             logger.warning(f"Omegascans API request to '{url}' failed.")
             return None
 
+    @cached(ttl=3600, key_prefix="omegascans:v2:tags_map")
+    async def _get_tags_map(self, context: SourceExecutionContext) -> dict[str, int]:
+        url = f"{API_BASE_URL}/tags?all=true"
+        data = await self._fetch_api_json(context, url)
+        tag_map = {}
+        if isinstance(data, list):
+            for t in data:
+                if isinstance(t, dict) and t.get("name") and t.get("id"):
+                    tag_map[t["name"].lower().strip()] = t["id"]
+        return tag_map
+
     @cached(ttl=300, key_prefix="omegascans:v2:search")
     async def search_titles(
         self, request: SourceBrowseRequest, context: SourceExecutionContext
@@ -108,11 +164,32 @@ class OmegaScansAdapter(BaseSourceAdapter):
         page = max(1, request.page)
         query = request.query.strip() if request.query else ""
         genre = request.filters.get("genre", "").strip()
+        status = request.filters.get("status", "").strip()
+        order_by = request.filters.get("sort", request.filters.get("orderBy", "latest")).strip()
+        order = request.filters.get("order", "desc").strip()
 
-        search_query = query or genre
-        url = f"{API_BASE_URL}/query?page={page}&per_page=20"
-        if search_query:
-            url += f"&query={quote(search_query)}"
+        params = [f"page={page}", "perPage=20"]
+
+        if query:
+            params.append(f"query_string={quote(query)}")
+
+        if status and status in ["Completed", "Ongoing"]:
+            params.append(f"status={status}")
+
+        if genre:
+            tag_map = await self._get_tags_map(context)
+            tag_id = tag_map.get(genre.lower())
+            if tag_id:
+                params.append(f"tags_ids=[{tag_id}]")
+            elif not query:
+                params.append(f"query_string={quote(genre)}")
+
+        if order_by:
+            params.append(f"orderBy={quote(order_by)}")
+        if order:
+            params.append(f"order={quote(order)}")
+
+        url = f"{API_BASE_URL}/query?" + "&".join(params)
 
         data = await self._fetch_api_json(context, url)
         if not data or not isinstance(data, dict):
