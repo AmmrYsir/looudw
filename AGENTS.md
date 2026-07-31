@@ -90,7 +90,7 @@ loouwd/
 
 2. **Network Request Protocol**:
    - Always route HTTP requests through `context.fetch_text()` or `context.fetch_json()` to trigger `DomainRateLimiter`.
-   - For anti-bot domains, use `curl_cffi.requests.AsyncSession` with browser impersonation (`safari15_5`, `chrome124`).
+   - For anti-bot domains (such as SpankBang, XVideos, xHamster), use `curl_cffi.requests.AsyncSession` with browser impersonation (`safari15_5`, `chrome124`, `chrome120`). Ensure `curl-cffi>=0.7.0` is installed and declared in `pyproject.toml`.
 
 3. **Title & Thumbnail Parsing**:
    - Sanitize video titles: strip duration text (e.g. `11 min`, `180m`, `07:28`) and badge prefixes.

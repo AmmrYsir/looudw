@@ -138,7 +138,7 @@ loouwd unified stream naruto
 
 ## 🧪 Running Automated Tests
 
-Run the full 15-test suite covering rate limiters, reactive streams, tag autocompletion, and REST API routes:
+Run the full 17-test suite covering rate limiters, reactive streams, tag autocompletion, adapter playback/search, and REST API routes:
 
 ```bash
 .venv\Scripts\python.exe -m unittest discover -s tests
@@ -146,7 +146,7 @@ Run the full 15-test suite covering rate limiters, reactive streams, tag autocom
 
 Output:
 ```bash
-Ran 15 tests in 4.679s
+Ran 17 tests in 4.132s
 
 OK
 ```
