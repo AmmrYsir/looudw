@@ -14,19 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy pyproject.toml for optimized layer caching
-COPY pyproject.toml .
+# Copy project definition and source code
+COPY pyproject.toml README.md AGENTS.md ./
+COPY src/ src/
 
-# Install Python dependencies and loouwd package
+# Upgrade pip and install loouwd package and dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
-
-# Copy application source code
-COPY src/ src/
-COPY README.md AGENTS.md ./
-
-# Install loouwd package inside container
-RUN pip install --no-cache-dir .
 
 EXPOSE 8000
 
