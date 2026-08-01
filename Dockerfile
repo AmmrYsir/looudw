@@ -14,9 +14,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project definition and source code
+# Copy project definition, static assets, and source code
 COPY pyproject.toml README.md AGENTS.md ./
 COPY src/ src/
+COPY public/ public/
 
 # Upgrade pip and install loouwd package and dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
