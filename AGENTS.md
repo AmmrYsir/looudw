@@ -51,6 +51,9 @@ Key methods every adapter implements or extends:
 loouwd/
 ├── AGENTS.md                   # This file (AI agent context & guidelines)
 ├── README.md                   # Project overview & user API docs
+├── Dockerfile                  # Production container image manifest
+├── docker-compose.yml          # Container service orchestration manifest
+├── .dockerignore               # Container build exclusions
 ├── pyproject.toml              # Project dependencies & CLI entrypoints
 ├── src/
 │   └── loouwd/

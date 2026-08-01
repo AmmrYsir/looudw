@@ -1,14 +1,18 @@
-version: '3.8'
-
 services:
-  api:
-    build: .
-    container_name: loouwd-api
+  loouwd-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: loouwd_api
     ports:
       - "8000:8000"
     environment:
-      - ENVIRONMENT=production
       - HOST=0.0.0.0
       - PORT=8000
-      - CACHE_ENABLED=true
+      - DEBUG=false
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/sources"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

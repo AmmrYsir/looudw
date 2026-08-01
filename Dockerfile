@@ -1,14 +1,36 @@
 FROM python:3.12-slim
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HOST=0.0.0.0 \
+    PORT=8000
+
 WORKDIR /app
 
-# Install dependencies and build package
-COPY pyproject.toml README.md /app/
-COPY src /app/src
+# Install system build tools required by libcurl/curl-cffi
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libffi-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy pyproject.toml for optimized layer caching
+COPY pyproject.toml .
+
+# Install Python dependencies and loouwd package
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
+# Copy application source code
+COPY src/ src/
+COPY README.md AGENTS.md ./
+
+# Install loouwd package inside container
+RUN pip install --no-cache-dir .
+
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/sources || exit 1
 
 CMD ["loouwd", "serve", "--host", "0.0.0.0", "--port", "8000"]

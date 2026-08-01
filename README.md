@@ -80,6 +80,33 @@ pip install -e .
 
 ---
 
+## 🐳 Running with Docker & Docker Compose
+
+You can easily build and run Loouwd in a containerized environment with zero local setup required:
+
+### Option A: Docker Compose (Recommended)
+```bash
+# Build and launch the containerized service in background
+docker compose up -d
+
+# View live application logs
+docker compose logs -f
+
+# Stop the containerized service
+docker compose down
+```
+
+### Option B: Direct Docker Build & Run
+```bash
+# Build Docker image
+docker build -t loouwd:latest .
+
+# Run container exposing port 8000
+docker run -d -p 8000:8000 --name loouwd_api loouwd:latest
+```
+
+---
+
 ## 🖥️ Running the Server & CLI
 
 ### Start FastAPI Web Server
